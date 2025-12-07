@@ -1,6 +1,7 @@
 // api/images.js
-// Stability AI — New Stable Image API (v2beta)
-// Works with free-tier API keys and no model ID required.
+// Stability AI – v2beta image generation (multipart/form-data)
+
+const FormData = require("form-data");
 
 module.exports = async function (req, res) {
   if (req.method !== "POST") {
@@ -20,22 +21,23 @@ module.exports = async function (req, res) {
     }
 
     const urls = [];
-    const limitedPrompts = prompts.slice(0, 3); // 3 images max
+    const limitedPrompts = prompts.slice(0, 3);
 
     for (const prompt of limitedPrompts) {
+      const form = new FormData();
+
+      form.append("prompt", prompt);
+      form.append("output_format", "png");
+
       const response = await fetch(
         "https://api.stability.ai/v2beta/stable-image/generate/core",
         {
           method: "POST",
           headers: {
             Authorization: `Bearer ${key}`,
-            Accept: "application/json",
-            "Content-Type": "application/json",
+            ...form.getHeaders(),
           },
-          body: JSON.stringify({
-            prompt,
-            output_format: "png"
-          }),
+          body: form,
         }
       );
 
@@ -55,7 +57,7 @@ module.exports = async function (req, res) {
 
     if (urls.length === 0) {
       return res.status(500).json({
-        error: "Stability API returned no images."
+        error: "Stability API returned no images.",
       });
     }
 
