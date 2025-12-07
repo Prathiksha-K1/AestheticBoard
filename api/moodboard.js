@@ -1,7 +1,7 @@
 // api/moodboard.js
 
-// Vercel Node serverless function (CommonJS style)
-module.exports = async (req, res) => {
+// Vercel Node.js Serverless Function (ESM style with default export)
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -47,7 +47,7 @@ Respond in EXACTLY this structure and keep it short but rich:
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini", // change if needed
+        model: "gpt-4o-mini", // change to another model if needed
         messages: [{ role: "user", content: prompt }],
         temperature: 0.9,
       }),
@@ -69,4 +69,4 @@ Respond in EXACTLY this structure and keep it short but rich:
     console.error("Server error:", err);
     return res.status(500).json({ error: "Server error", detail: String(err) });
   }
-};
+}
