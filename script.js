@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const imageLoaderEl = document.getElementById("imageLoader");
   const imageGridEl = document.getElementById("imageGrid");
 
-  // === API endpoints (handled by Vercel serverless) ===
+  // === API endpoints ===
   const MOODBOARD_API_URL = "/api/moodboard";
   const IMAGES_API_URL = "/api/images";
 
@@ -88,9 +88,8 @@ word1, word2, word3, word4, word5, word6, word7, word8
     return data.urls || [];
   }
 
-  // === Parsing helpers ===
+  // === Parsing & render helpers ===
   function extractSection(text, label) {
-    // label: "PALETTE", "KEYWORDS", "DESCRIPTION", "PROMPTS"
     const regex = new RegExp(`\\[${label}\\]\\s*([\\s\\S]*?)(?=\\n\\s*\\[|$)`, "i");
     const match = text.match(regex);
     return match ? match[1].trim() : "";
@@ -143,11 +142,47 @@ word1, word2, word3, word4, word5, word6, word7, word8
   function parsePromptsToArray(promptsText) {
     return promptsText
       .split("\n")
-      .map((line) => line.replace(/^\d+\.\s*/, "").trim()) // remove "1. "
+      .map((line) => line.replace(/^\d+\.\s*/, "").trim())
       .filter(Boolean);
   }
 
-  // === Moodboard generation button ===
+  // === Fallback: generate gradient tiles from palette if API images fail ===
+  function generateFallbackImages() {
+    imageGridEl.innerHTML = "";
+
+    const swatches = Array.from(
+      paletteSwatchesEl.querySelectorAll(".swatch")
+    );
+    let colors = swatches.map((s) =>
+      window.getComputedStyle(s).backgroundColor
+    );
+
+    if (!colors.length) {
+      // default neutral set
+      colors = ["#4b5563", "#111827", "#9ca3af"];
+    }
+
+    const count = 3;
+
+    for (let i = 0; i < count; i++) {
+      const card = document.createElement("div");
+      card.className = "image-card";
+
+      const inner = document.createElement("div");
+      inner.style.width = "100%";
+      inner.style.height = "100%";
+
+      const c1 = colors[i % colors.length];
+      const c2 = colors[(i + 1) % colors.length];
+
+      inner.style.background = `linear-gradient(135deg, ${c1}, ${c2})`;
+
+      card.appendChild(inner);
+      imageGridEl.appendChild(card);
+    }
+  }
+
+  // === Moodboard generation ===
   generateBtn.addEventListener("click", async () => {
     const theme = themeEl.value.trim();
     const useCase = useCaseEl.value;
@@ -190,7 +225,6 @@ word1, word2, word3, word4, word5, word6, word7, word8
       descriptionEl.textContent = description || "No description parsed.";
       promptsEl.textContent = prompts || "No prompts parsed.";
 
-      // Enable or disable image generation button
       if (prompts && prompts.trim().length > 0) {
         generateImagesBtn.disabled = false;
       } else {
@@ -208,10 +242,10 @@ word1, word2, word3, word4, word5, word6, word7, word8
     }
   });
 
-  // === Image generation button ===
+  // === Image generation (with fallback) ===
   generateImagesBtn.addEventListener("click", async () => {
     const promptsText = promptsEl.textContent || "";
-    const promptsArray = parsePromptsToArray(promptsText).slice(0, 3); // up to 3 images
+    const promptsArray = parsePromptsToArray(promptsText).slice(0, 3);
 
     if (promptsArray.length === 0) {
       errorEl.textContent = "No prompts available to generate images.";
@@ -227,8 +261,7 @@ word1, word2, word3, word4, word5, word6, word7, word8
       const urls = await callImagesAPI(promptsArray);
 
       if (!urls.length) {
-        errorEl.textContent = "Image generation failed. No URLs returned.";
-        return;
+        throw new Error("No URLs returned from image API");
       }
 
       urls.forEach((url) => {
@@ -243,9 +276,10 @@ word1, word2, word3, word4, word5, word6, word7, word8
         imageGridEl.appendChild(card);
       });
     } catch (err) {
-      console.error(err);
+      console.error("Image generation failed, using fallback:", err);
       errorEl.textContent =
-        "Image generation failed. Please try again or check server logs.";
+        "Image generation failed from API, showing aesthetic placeholders instead.";
+      generateFallbackImages();
     } finally {
       imageLoaderEl.classList.add("hidden");
       generateImagesBtn.disabled = false;
