@@ -1,5 +1,6 @@
 // api/images.js
-// Use Stability AI (Stable Diffusion) for free-ish image generation (needs STABILITY_API_KEY)
+// Stability AI — New Stable Image API (v2beta)
+// Works with free-tier API keys and no model ID required.
 
 module.exports = async function (req, res) {
   if (req.method !== "POST") {
@@ -13,67 +14,54 @@ module.exports = async function (req, res) {
       return res.status(400).json({ error: "No prompts provided" });
     }
 
-    if (!process.env.STABILITY_API_KEY) {
-      return res
-        .status(500)
-        .json({ error: "Missing STABILITY_API_KEY in environment" });
+    const key = process.env.STABILITY_API_KEY;
+    if (!key) {
+      return res.status(500).json({ error: "Missing STABILITY_API_KEY" });
     }
 
-    const limitedPrompts = prompts.slice(0, 3); // up to 3 images
     const urls = [];
+    const limitedPrompts = prompts.slice(0, 3); // 3 images max
 
     for (const prompt of limitedPrompts) {
-      const stabilityRes = await fetch(
-        "https://api.stability.ai/v1/generation/stable-diffusion-v1-5/text-to-image",
+      const response = await fetch(
+        "https://api.stability.ai/v2beta/stable-image/generate/core",
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            Authorization: `Bearer ${key}`,
             Accept: "application/json",
-            Authorization: `Bearer ${process.env.STABILITY_API_KEY}`,
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            text_prompts: [{ text: prompt }],
-            cfg_scale: 7,
-            height: 512,
-            width: 512,
-            samples: 1,
-            steps: 30,
+            prompt,
+            output_format: "png"
           }),
         }
       );
 
-      if (!stabilityRes.ok) {
-        const errText = await stabilityRes.text();
-        console.error(
-          "Stability image error:",
-          stabilityRes.status,
-          errText
-        );
-        // Continue to next prompt instead of breaking everything
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Stability API error:", response.status, errorText);
         continue;
       }
 
-      const data = await stabilityRes.json();
-      const b64 = data?.artifacts?.[0]?.base64;
+      const result = await response.json();
+      const b64 = result?.image_base64;
 
       if (b64) {
-        // Data URL is directly usable by <img src="...">
-        const dataUrl = `data:image/png;base64,${b64}`;
-        urls.push(dataUrl);
+        urls.push(`data:image/png;base64,${b64}`);
       }
     }
 
-    if (!urls.length) {
+    if (urls.length === 0) {
       return res.status(500).json({
-        error:
-          "Stability API returned no images. Check credits / key / logs.",
+        error: "Stability API returned no images."
       });
     }
 
     return res.status(200).json({ urls });
   } catch (err) {
-    console.error("Server error (images via Stability):", err);
+    console.error("Server error:", err);
     return res.status(500).json({
       error: "Server error",
       detail: String(err),
