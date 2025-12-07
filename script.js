@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // DOM elements
+  // === DOM elements ===
   const themeEl = document.getElementById("theme");
   const useCaseEl = document.getElementById("useCase");
   const styleEl = document.getElementById("style");
@@ -16,9 +16,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const descriptionEl = document.getElementById("description");
   const promptsEl = document.getElementById("prompts");
 
-  // Our backend route on Vercel
-  const API_URL = "/api/moodboard";
+  const generateImagesBtn = document.getElementById("generateImagesBtn");
+  const imageLoaderEl = document.getElementById("imageLoader");
+  const imageGridEl = document.getElementById("imageGrid");
 
+  // === API endpoints (handled by Vercel serverless) ===
+  const MOODBOARD_API_URL = "/api/moodboard";
+  const IMAGES_API_URL = "/api/images";
+
+  // === Prompt builder for moodboard ===
   function buildPrompt(theme, useCase, style, intensity) {
     return `
 You are a senior art director and AI prompt engineer.
@@ -38,7 +44,7 @@ Respond EXACTLY in this structure and keep it short but rich:
 word1, word2, word3, word4, word5, word6, word7, word8
 
 [DESCRIPTION]
-1–3 sentences describing the moodboard like a Pinterest board, in plain text.
+1–3 sentences describing the moodboard like a Pinterest board.
 
 [PROMPTS]
 1. A detailed image prompt for a generative image model (Midjourney / DALL·E).
@@ -47,8 +53,9 @@ word1, word2, word3, word4, word5, word6, word7, word8
 `;
   }
 
+  // === API calls ===
   async function callMoodboardAPI(theme, useCase, style, intensity) {
-    const res = await fetch(API_URL, {
+    const res = await fetch(MOODBOARD_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ theme, useCase, style, intensity }),
@@ -64,13 +71,27 @@ word1, word2, word3, word4, word5, word6, word7, word8
     return data.text;
   }
 
-  // More robust section extraction
-  function extractSection(text, marker) {
-    // marker will be like "[PALETTE]", "[KEYWORDS]" etc.
-    const regex = new RegExp(
-      `${marker}\\s*([\\s\\S]*?)(?=\\n\\s*\\[|$)`,
-      "i"
-    );
+  async function callImagesAPI(promptsArray) {
+    const res = await fetch(IMAGES_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompts: promptsArray }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.error("Image backend error:", err);
+      throw new Error(err.error || "Image backend error");
+    }
+
+    const data = await res.json();
+    return data.urls || [];
+  }
+
+  // === Parsing helpers ===
+  function extractSection(text, label) {
+    // label: "PALETTE", "KEYWORDS", "DESCRIPTION", "PROMPTS"
+    const regex = new RegExp(`\\[${label}\\]\\s*([\\s\\S]*?)(?=\\n\\s*\\[|$)`, "i");
     const match = text.match(regex);
     return match ? match[1].trim() : "";
   }
@@ -119,6 +140,14 @@ word1, word2, word3, word4, word5, word6, word7, word8
     });
   }
 
+  function parsePromptsToArray(promptsText) {
+    return promptsText
+      .split("\n")
+      .map((line) => line.replace(/^\d+\.\s*/, "").trim()) // remove "1. "
+      .filter(Boolean);
+  }
+
+  // === Moodboard generation button ===
   generateBtn.addEventListener("click", async () => {
     const theme = themeEl.value.trim();
     const useCase = useCaseEl.value;
@@ -127,11 +156,14 @@ word1, word2, word3, word4, word5, word6, word7, word8
 
     errorEl.textContent = "";
     resultsEl.classList.add("hidden");
+
     paletteSwatchesEl.innerHTML = "";
     paletteTextEl.textContent = "";
     keywordsEl.innerHTML = "";
     descriptionEl.textContent = "";
     promptsEl.textContent = "";
+    imageGridEl.innerHTML = "";
+    generateImagesBtn.disabled = true;
 
     if (!theme) {
       errorEl.textContent = "Please type some theme keywords first.";
@@ -148,15 +180,22 @@ word1, word2, word3, word4, word5, word6, word7, word8
       const aiText = await callMoodboardAPI(theme, useCase, style, intensity);
       console.log("AI response:", aiText);
 
-      const palette = extractSection(aiText, "\\[PALETTE\\]");
-      const keywords = extractSection(aiText, "\\[KEYWORDS\\]");
-      const description = extractSection(aiText, "\\[DESCRIPTION\\]");
-      const prompts = extractSection(aiText, "\\[PROMPTS\\]");
+      const palette = extractSection(aiText, "PALETTE");
+      const keywords = extractSection(aiText, "KEYWORDS");
+      const description = extractSection(aiText, "DESCRIPTION");
+      const prompts = extractSection(aiText, "PROMPTS");
 
       renderPalette(palette || "");
       renderKeywords(keywords || "");
       descriptionEl.textContent = description || "No description parsed.";
       promptsEl.textContent = prompts || "No prompts parsed.";
+
+      // Enable or disable image generation button
+      if (prompts && prompts.trim().length > 0) {
+        generateImagesBtn.disabled = false;
+      } else {
+        generateImagesBtn.disabled = true;
+      }
 
       resultsEl.classList.remove("hidden");
     } catch (err) {
@@ -166,6 +205,50 @@ word1, word2, word3, word4, word5, word6, word7, word8
     } finally {
       loaderEl.classList.add("hidden");
       generateBtn.disabled = false;
+    }
+  });
+
+  // === Image generation button ===
+  generateImagesBtn.addEventListener("click", async () => {
+    const promptsText = promptsEl.textContent || "";
+    const promptsArray = parsePromptsToArray(promptsText).slice(0, 3); // up to 3 images
+
+    if (promptsArray.length === 0) {
+      errorEl.textContent = "No prompts available to generate images.";
+      return;
+    }
+
+    errorEl.textContent = "";
+    imageGridEl.innerHTML = "";
+    imageLoaderEl.classList.remove("hidden");
+    generateImagesBtn.disabled = true;
+
+    try {
+      const urls = await callImagesAPI(promptsArray);
+
+      if (!urls.length) {
+        errorEl.textContent = "Image generation failed. No URLs returned.";
+        return;
+      }
+
+      urls.forEach((url) => {
+        const card = document.createElement("div");
+        card.className = "image-card";
+
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = "AI generated moodboard image";
+
+        card.appendChild(img);
+        imageGridEl.appendChild(card);
+      });
+    } catch (err) {
+      console.error(err);
+      errorEl.textContent =
+        "Image generation failed. Please try again or check server logs.";
+    } finally {
+      imageLoaderEl.classList.add("hidden");
+      generateImagesBtn.disabled = false;
     }
   });
 });

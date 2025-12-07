@@ -48,7 +48,8 @@ main {
   backdrop-filter: blur(16px);
 }
 
-.left h2, .right h2 {
+.left h2,
+.right h2 {
   font-size: 1.1rem;
   margin-bottom: 10px;
 }
@@ -167,7 +168,7 @@ button:disabled {
   justify-content: center;
   font-size: 0.6rem;
   padding-bottom: 4px;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 .chips {
@@ -189,7 +190,8 @@ pre {
   white-space: pre-wrap;
   font-size: 0.8rem;
   color: #9ca3af;
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
 footer {
@@ -201,6 +203,56 @@ footer {
 
 .hidden {
   display: none;
+}
+
+/* Secondary button (for images) */
+.secondary-btn {
+  margin-top: 6px;
+  margin-bottom: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid #4b5563;
+  background: #020617;
+  color: #e5e7eb;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+
+.secondary-btn:hover:not(:disabled) {
+  background: #111827;
+  transform: translateY(-1px);
+}
+
+.secondary-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Image grid */
+.image-grid {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.image-card {
+  width: 110px;
+  height: 110px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #111827;
+  background: #020617;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 @media (max-width: 900px) {

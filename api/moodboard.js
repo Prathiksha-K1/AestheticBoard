@@ -1,6 +1,6 @@
 // api/moodboard.js
+// Serverless function for generating moodboard text using OpenAI Chat API
 
-// Node.js Serverless Function for Vercel using CommonJS
 module.exports = async function (req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });

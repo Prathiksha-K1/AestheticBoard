@@ -9,7 +9,7 @@
   <div class="app">
     <header>
       <h1>AestheticBoard</h1>
-      <p>Turn a few words into a full AI-powered moodboard: palette, vibes, and prompts.</p>
+      <p>Turn a few words into a full AI-powered moodboard: palette, vibes, prompts, and images.</p>
     </header>
 
     <main>
@@ -18,16 +18,19 @@
         <h2>Describe your vibe ✨</h2>
 
         <label for="theme">Theme / keywords</label>
-        <textarea id="theme" placeholder="Example: cozy night desk, pastel purple, anime, soft lights, study aesthetic"></textarea>
+        <textarea
+          id="theme"
+          placeholder="Example: cozy night desk, pastel purple, anime, fairy lights, study aesthetic"
+        ></textarea>
 
         <div class="row">
           <div class="field">
             <label for="useCase">Use case</label>
             <select id="useCase">
               <option value="ui">UI design / app design</option>
-              <option value="room" selected>Room / interior decor</option>
+              <option value="room">Room / interior decor</option>
               <option value="outfit">Outfit / fashion styling</option>
-              <option value="brand">Branding / logo / social media</option>
+              <option value="brand" selected>Branding / logo / social media</option>
               <option value="wallpaper">Wallpaper / lockscreen</option>
             </select>
           </div>
@@ -81,6 +84,15 @@
           <div class="card">
             <h3>AI Image Prompts</h3>
             <pre id="prompts"></pre>
+          </div>
+
+          <div class="card">
+            <h3>Generated Images</h3>
+            <button id="generateImagesBtn" class="secondary-btn" disabled>
+              Generate Images from Prompts
+            </button>
+            <div id="imageLoader" class="loader hidden">🖼️ Generating images...</div>
+            <div id="imageGrid" class="image-grid"></div>
           </div>
         </div>
       </section>
