@@ -1,0 +1,10 @@
+{
+  "name": "aestheticboard",
+  "version": "1.0.0",
+  "description": "Aesthetic moodboard generator using Vercel serverless API",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  }
+}
