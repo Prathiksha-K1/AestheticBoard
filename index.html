@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AestheticBoard – AI Moodboard Generator</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>AestheticBoard</h1>
+      <p>Turn a few words into a full AI-powered moodboard: palette, vibes, and prompts.</p>
+    </header>
+
+    <main>
+      <!-- LEFT: INPUT -->
+      <section class="panel left">
+        <h2>Describe your vibe ✨</h2>
+
+        <label for="theme">Theme / keywords</label>
+        <textarea id="theme" placeholder="Example: cozy night desk, pastel purple, anime, soft lights, study aesthetic"></textarea>
+
+        <div class="row">
+          <div class="field">
+            <label for="useCase">Use case</label>
+            <select id="useCase">
+              <option value="ui">UI design / app design</option>
+              <option value="room" selected>Room / interior decor</option>
+              <option value="outfit">Outfit / fashion styling</option>
+              <option value="brand">Branding / logo / social media</option>
+              <option value="wallpaper">Wallpaper / lockscreen</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="style">Style preset</label>
+            <select id="style">
+              <option value="minimal" selected>Minimal & clean</option>
+              <option value="vintage">Vintage & warm</option>
+              <option value="cyberpunk">Cyberpunk & neon</option>
+              <option value="cottagecore">Cottagecore / soft</option>
+              <option value="kpop">K-pop / Y2K / pop</option>
+            </select>
+          </div>
+        </div>
+
+        <label for="intensity">How bold?</label>
+        <select id="intensity">
+          <option value="soft" selected>Soft & subtle</option>
+          <option value="balanced">Balanced</option>
+          <option value="bold">Very bold & experimental</option>
+        </select>
+
+        <button id="generateBtn">Generate Moodboard</button>
+        <p id="error" class="error"></p>
+      </section>
+
+      <!-- RIGHT: OUTPUT -->
+      <section class="panel right">
+        <h2>AI Moodboard Output</h2>
+
+        <div id="loader" class="loader hidden">🎨 Crafting your aesthetic...</div>
+
+        <div id="results" class="results hidden">
+          <div class="card">
+            <h3>Color Palette</h3>
+            <div id="paletteSwatches" class="palette"></div>
+            <pre id="paletteText"></pre>
+          </div>
+
+          <div class="card">
+            <h3>Vibe Keywords</h3>
+            <div id="keywords" class="chips"></div>
+          </div>
+
+          <div class="card">
+            <h3>Moodboard Description</h3>
+            <pre id="description"></pre>
+          </div>
+
+          <div class="card">
+            <h3>AI Image Prompts</h3>
+            <pre id="prompts"></pre>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <small>Built for Hackathons · Powered by Generative AI</small>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
