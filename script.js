@@ -16,7 +16,36 @@ document.addEventListener("DOMContentLoaded", () => {
   const descriptionEl = document.getElementById("description");
   const promptsEl = document.getElementById("prompts");
 
-  const API_URL = "/api/moodboard"; // our backend route
+  // Our backend route on Vercel
+  const API_URL = "/api/moodboard";
+
+  function buildPrompt(theme, useCase, style, intensity) {
+    return `
+You are a senior art director and AI prompt engineer.
+
+Create a cohesive aesthetic moodboard based on:
+- Theme keywords: ${theme}
+- Primary use case: ${useCase}
+- Style preset: ${style}
+- Intensity: ${intensity}
+
+Respond EXACTLY in this structure and keep it short but rich:
+
+[PALETTE]
+- #hexcode - short color name (4–6 colors)
+
+[KEYWORDS]
+word1, word2, word3, word4, word5, word6, word7, word8
+
+[DESCRIPTION]
+1–3 sentences describing the moodboard like a Pinterest board, in plain text.
+
+[PROMPTS]
+1. A detailed image prompt for a generative image model (Midjourney / DALL·E).
+2. Another detailed image prompt.
+3. Another detailed image prompt.
+`;
+  }
 
   async function callMoodboardAPI(theme, useCase, style, intensity) {
     const res = await fetch(API_URL, {
@@ -35,13 +64,15 @@ document.addEventListener("DOMContentLoaded", () => {
     return data.text;
   }
 
+  // More robust section extraction
   function extractSection(text, marker) {
-    const parts = text.split(marker);
-    if (parts.length < 2) return "";
-    const rest = parts[1];
-    const nextMarkerIndex = rest.indexOf("[");
-    if (nextMarkerIndex === -1) return rest.trim();
-    return rest.slice(0, nextMarkerIndex).trim();
+    // marker will be like "[PALETTE]", "[KEYWORDS]" etc.
+    const regex = new RegExp(
+      `${marker}\\s*([\\s\\S]*?)(?=\\n\\s*\\[|$)`,
+      "i"
+    );
+    const match = text.match(regex);
+    return match ? match[1].trim() : "";
   }
 
   function renderPalette(paletteText) {
@@ -107,6 +138,9 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    const prompt = buildPrompt(theme, useCase, style, intensity);
+    console.log("Prompt sent to backend:", prompt);
+
     generateBtn.disabled = true;
     loaderEl.classList.remove("hidden");
 
@@ -114,10 +148,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const aiText = await callMoodboardAPI(theme, useCase, style, intensity);
       console.log("AI response:", aiText);
 
-      const palette = extractSection(aiText, "[PALETTE]");
-      const keywords = extractSection(aiText, "[KEYWORDS]");
-      const description = extractSection(aiText, "[DESCRIPTION]");
-      const prompts = extractSection(aiText, "[PROMPTS]");
+      const palette = extractSection(aiText, "\\[PALETTE\\]");
+      const keywords = extractSection(aiText, "\\[KEYWORDS\\]");
+      const description = extractSection(aiText, "\\[DESCRIPTION\\]");
+      const prompts = extractSection(aiText, "\\[PROMPTS\\]");
 
       renderPalette(palette || "");
       renderKeywords(keywords || "");
