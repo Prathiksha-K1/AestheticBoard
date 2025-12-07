@@ -1,6 +1,5 @@
 // api/images.js
-// Serverless function for generating images from prompts using OpenAI Images API
-// Tries multiple models: gpt-image-1, then dall-e-3. If all fail, frontend will show placeholders.
+// Use Stability AI (Stable Diffusion) for free-ish image generation (needs STABILITY_API_KEY)
 
 module.exports = async function (req, res) {
   if (req.method !== "POST") {
@@ -14,70 +13,67 @@ module.exports = async function (req, res) {
       return res.status(400).json({ error: "No prompts provided" });
     }
 
+    if (!process.env.STABILITY_API_KEY) {
+      return res
+        .status(500)
+        .json({ error: "Missing STABILITY_API_KEY in environment" });
+    }
+
     const limitedPrompts = prompts.slice(0, 3); // up to 3 images
     const urls = [];
-    const MODELS = ["gpt-image-1", "dall-e-3"]; // try in this order
 
     for (const prompt of limitedPrompts) {
-      let imageUrl = null;
-
-      for (const model of MODELS) {
-        try {
-          const openaiRes = await fetch(
-            "https://api.openai.com/v1/images/generations",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-              },
-              body: JSON.stringify({
-                model,
-                prompt,
-                n: 1,
-                size: "1024x1024", // supported sizes: 1024x1024, 1024x1536, 1536x1024, auto
-              }),
-            }
-          );
-
-          if (!openaiRes.ok) {
-            const errText = await openaiRes.text();
-            console.error(
-              `IMAGE GENERATION ERROR with model ${model}:`,
-              openaiRes.status,
-              errText
-            );
-            // Try next model instead of failing immediately
-            continue;
-          }
-
-          const data = await openaiRes.json();
-          imageUrl = data?.data?.[0]?.url || null;
-          if (imageUrl) break; // success for this prompt+model
-        } catch (innerErr) {
-          console.error(`Image generation exception for model ${model}:`, innerErr);
-          // Try next model
-          continue;
+      const stabilityRes = await fetch(
+        "https://api.stability.ai/v1/generation/stable-diffusion-v1-5/text-to-image",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${process.env.STABILITY_API_KEY}`,
+          },
+          body: JSON.stringify({
+            text_prompts: [{ text: prompt }],
+            cfg_scale: 7,
+            height: 512,
+            width: 512,
+            samples: 1,
+            steps: 30,
+          }),
         }
+      );
+
+      if (!stabilityRes.ok) {
+        const errText = await stabilityRes.text();
+        console.error(
+          "Stability image error:",
+          stabilityRes.status,
+          errText
+        );
+        // Continue to next prompt instead of breaking everything
+        continue;
       }
 
-      if (imageUrl) {
-        urls.push(imageUrl);
+      const data = await stabilityRes.json();
+      const b64 = data?.artifacts?.[0]?.base64;
+
+      if (b64) {
+        // Data URL is directly usable by <img src="...">
+        const dataUrl = `data:image/png;base64,${b64}`;
+        urls.push(dataUrl);
       }
     }
 
-    // If at least one image URL was generated, return them
-    if (urls.length > 0) {
-      return res.status(200).json({ urls });
+    if (!urls.length) {
+      return res.status(500).json({
+        error:
+          "Stability API returned no images. Check credits / key / logs.",
+      });
     }
 
-    // If no URLs at all, let frontend fallback handle visuals
-    return res.status(500).json({
-      error:
-        "All image models failed or are not accessible. No image URLs generated.",
-    });
+    return res.status(200).json({ urls });
   } catch (err) {
-    console.error("Server error (images):", err);
+    console.error("Server error (images via Stability):", err);
     return res.status(500).json({
       error: "Server error",
       detail: String(err),
