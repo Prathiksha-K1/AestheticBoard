@@ -1,5 +1,5 @@
 // api/images.js
-// Stable OpenAI Image Generation API (works even for most restricted accounts)
+// Serverless function for generating images from prompts using OpenAI Images API
 
 module.exports = async function (req, res) {
   if (req.method !== "POST") {
@@ -13,23 +13,27 @@ module.exports = async function (req, res) {
       return res.status(400).json({ error: "No prompts provided" });
     }
 
-    const limitedPrompts = prompts.slice(0, 3);
+    const limitedPrompts = prompts.slice(0, 3); // up to 3 images
     const urls = [];
 
     for (const prompt of limitedPrompts) {
-      const openaiRes = await fetch("https://api.openai.com/v1/images/generations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-image-1",
-          prompt: prompt,
-          size: "512x512",
-          n: 1
-        }),
-      });
+      const openaiRes = await fetch(
+        "https://api.openai.com/v1/images/generations",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-image-1",      // image model
+            prompt: prompt,
+            n: 1,
+            size: "1024x1024"          // 👈 IMPORTANT: supported size
+            // you could also use: size: "auto"
+          }),
+        }
+      );
 
       if (!openaiRes.ok) {
         const errText = await openaiRes.text();
@@ -43,12 +47,14 @@ module.exports = async function (req, res) {
       const data = await openaiRes.json();
       const imageUrl = data?.data?.[0]?.url;
 
-      if (imageUrl) urls.push(imageUrl);
+      if (imageUrl) {
+        urls.push(imageUrl);
+      }
     }
 
     return res.status(200).json({ urls });
   } catch (err) {
-    console.error("Server error:", err);
+    console.error("Server error (images):", err);
     return res.status(500).json({
       error: "Server error",
       detail: String(err),
