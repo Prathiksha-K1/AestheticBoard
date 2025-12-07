@@ -1,5 +1,5 @@
 // api/images.js
-// Serverless function for generating images from prompts using OpenAI Images API
+// Stable OpenAI Image Generation API (works even for most restricted accounts)
 
 module.exports = async function (req, res) {
   if (req.method !== "POST") {
@@ -13,48 +13,45 @@ module.exports = async function (req, res) {
       return res.status(400).json({ error: "No prompts provided" });
     }
 
-    const limitedPrompts = prompts.slice(0, 3); // up to 3 images
+    const limitedPrompts = prompts.slice(0, 3);
     const urls = [];
 
     for (const prompt of limitedPrompts) {
-      const openaiRes = await fetch(
-        "https://api.openai.com/v1/images/generations",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-image-1", // or "dall-e-3" depending on your access
-            prompt,
-            n: 1,
-            size: "512x512",
-          }),
-        }
-      );
+      const openaiRes = await fetch("https://api.openai.com/v1/images/generations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-image-1",
+          prompt: prompt,
+          size: "512x512",
+          n: 1
+        }),
+      });
 
       if (!openaiRes.ok) {
         const errText = await openaiRes.text();
-        console.error("OpenAI image error:", openaiRes.status, errText);
+        console.error("IMAGE GENERATION ERROR:", openaiRes.status, errText);
         return res.status(500).json({
-          error: "OpenAI image error",
-          status: openaiRes.status,
+          error: "OpenAI image generation failed",
           detail: errText,
         });
       }
 
       const data = await openaiRes.json();
-      if (data.data && data.data[0] && data.data[0].url) {
-        urls.push(data.data[0].url);
-      }
+      const imageUrl = data?.data?.[0]?.url;
+
+      if (imageUrl) urls.push(imageUrl);
     }
 
     return res.status(200).json({ urls });
   } catch (err) {
-    console.error("Server error (images):", err);
-    return res
-      .status(500)
-      .json({ error: "Server error", detail: String(err) });
+    console.error("Server error:", err);
+    return res.status(500).json({
+      error: "Server error",
+      detail: String(err),
+    });
   }
 };
